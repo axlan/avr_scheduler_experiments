@@ -20,7 +20,9 @@
 uint8_t stack1[STACK_SIZE];
 uint8_t stack2[STACK_SIZE];
 
-#define TICKS_PER_MS (F_CPU / 1000 / 64)
+// We're tracking time based on timer1 which runs at F_CPU / 64.
+// The casting to to avoid overflowing the integer sizes.
+#define MS_TO_TICKS(ms) (F_CPU / (1000ull * 64ull / ((uint32_t)ms)))
 
 // These functions are declared in helpers.s . They back up the registers and switch stacks
 // between the current task and the kernel.
@@ -67,18 +69,18 @@ void task1() {
 	while (1) {
 		// Note that both tasks are modifying PORTB. This would not be safe if preemption was a possibility.
 		PORTB |= 1;
-		delay(TICKS_PER_MS * 200);
+		delay(MS_TO_TICKS(200));
 		PORTB &= ~1;
-		delay(TICKS_PER_MS * 100);
+		delay(MS_TO_TICKS(100));
 	}
 }
 
 void task2() {
 	while (1) {
 		PORTB |= 2;
-		delay(TICKS_PER_MS * 100);
+		delay(MS_TO_TICKS(100));
 		PORTB &= ~2;
-		delay(TICKS_PER_MS * 200);
+		delay(MS_TO_TICKS(200));
 	}
 }
 
