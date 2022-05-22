@@ -127,7 +127,7 @@ int main(void)
 	
 	// Enable timer1 in normal mode with 64us rate.
 	// To do this, just set the clock source to the 1/64 prescaler.
-	TCCR1B = CS11 | CS10;
+	TCCR1B = (1 << CS11) | (1 << CS10);
 	
 	while (1)
 	{
