@@ -1,3 +1,8 @@
+/**
+ * The goal for this version is to have the most basic scheduler without
+ * preemption.
+ */
+
 #include <avr/io.h>
 
 // Normally the stack grows from the end of the RAM range. Here we're allocating memory on the heap
@@ -24,6 +29,7 @@ struct Task {
 // Dummy tasks to run.
 void task1() {
 	while (1) {
+		// Note that both tasks are modifying PORTB. This would not be safe if preemption was a possibility.
 		PORTB ^= 1;
 		suspend_task();
 	}
