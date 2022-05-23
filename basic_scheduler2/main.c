@@ -1,7 +1,7 @@
 /*
  * Here I add some basic logic to include a timer for the scheduler to let tasks sleep for
  * specified amount of time.
- * Comments assume F_CPU == 1e6
+ * Comments assume F_CPU == 16e6 (default Arduino clock)
  */
 
 #include <avr/io.h>
@@ -9,20 +9,20 @@
 #include <stdbool.h>
 
 #ifndef F_CPU
-	#define F_CPU 1000000
+	#define F_CPU 16000000
 #endif
 
 // Normally the stack grows from the end of the RAM range. Here we're allocating memory on the heap
 // to use as independent stacks for our tasks. The "kernel" task will have an additional stack at
 // the normal position in memory.
 // We could also do this in a linker script.
-#define STACK_SIZE 512
+#define STACK_SIZE 256
 uint8_t stack1[STACK_SIZE];
 uint8_t stack2[STACK_SIZE];
 
 // We're tracking time based on timer1 which runs at F_CPU / 64.
 // The casting to to avoid overflowing the integer sizes.
-#define MS_TO_TICKS(ms) (F_CPU / (1000ull * 64ull / ((uint32_t)ms)))
+#define MS_TO_TICKS(ms) (F_CPU / (1000.0d * 64.0d / ((double)ms)))
 
 // These functions are declared in helpers.s . They back up the registers and switch stacks
 // between the current task and the kernel.
@@ -69,18 +69,18 @@ void task1() {
 	while (1) {
 		// Note that both tasks are modifying PORTB. This would not be safe if preemption was a possibility.
 		PORTB |= 1;
-		delay(MS_TO_TICKS(200));
+		delay(MS_TO_TICKS(20));
 		PORTB &= ~1;
-		delay(MS_TO_TICKS(100));
+		delay(MS_TO_TICKS(10));
 	}
 }
 
 void task2() {
 	while (1) {
 		PORTB |= 2;
-		delay(MS_TO_TICKS(100));
+		delay(MS_TO_TICKS(10));
 		PORTB &= ~2;
-		delay(MS_TO_TICKS(200));
+		delay(MS_TO_TICKS(20));
 	}
 }
 
@@ -100,7 +100,7 @@ void setup_start_funcs() {
 	}
 }
 
-// This assumes that the tasks are running for less than 2 seconds, and delaying for less than 2 seconds.
+// This assumes that the tasks are running for less than 125 ms, and delaying for less than 125 ms.
 // This time scale could be increased either by slowing down timer1 (and losing precision) or by using a timer interrupt to make the effective timer size 32 bit.
 bool is_time_past(uint16_t target_time) {
 	uint16_t current_time = get_time();
@@ -127,7 +127,7 @@ int main(void)
 	DDRB = 0x3;
 	setup_start_funcs();
 	
-	// Enable timer1 in normal mode with 64us rate.
+	// Enable timer1 in normal mode with 4us rate.
 	// To do this, just set the clock source to the 1/64 prescaler.
 	TCCR1B = (1 << CS11) | (1 << CS10);
 	

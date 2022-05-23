@@ -9,7 +9,7 @@
 // to use as independent stacks for our tasks. The "kernel" task will have an additional stack at
 // the normal position in memory.
 // We could also do this in a linker script.
-#define STACK_SIZE 512
+#define STACK_SIZE 256
 uint8_t stack1[STACK_SIZE];
 uint8_t stack2[STACK_SIZE];
 
