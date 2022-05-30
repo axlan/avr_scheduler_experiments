@@ -12,4 +12,4 @@ scheduler_elf_file = "basic_scheduler3/Debug/basic_scheduler3.elf"
 
 subprocess.run([tool_path + 'avr-objcopy', "-O", "binary", "--only-section=.text.*", task_object_file, task_main_dump])
 
-
+subprocess.run([tool_path + 'avr-objcopy', "--update-section", ".tasks=" + task_main_dump, scheduler_elf_file])

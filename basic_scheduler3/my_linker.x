@@ -164,13 +164,14 @@ SECTIONS
 	KEEP (*(.fini1))
 	*(.fini0)  /* Infinite loop after program termination.  */
 	KEEP (*(.fini0))
+	__scheduler_end__ = .;
 	/* Space to write loaded tasks to.  */
-	. = 0x2000
+	. = 0x2000;
 	*(.tasks)
 	KEEP (*(.tasks))
 	/* "dynamic syscall" functions in last 1K. Should add assert to check size of previous sections. */
-	. = 0x3C00
-	*(.delay_func) 
+	. = 0x3C00;
+	*(.delay_func)
 		_etext = . ;
 	}  > text
 	.data          :
@@ -272,4 +273,4 @@ SECTIONS
 }
 
 /* Check if compiled scheduler code overflows into space reserved for external tasks. */
-ASSERT( .fini0 < 0x2000, "FLASH memory overflowed !")
+/* ASSERT(__scheduler_end__ < 0x2000, "FLASH memory overflowed !")*/
