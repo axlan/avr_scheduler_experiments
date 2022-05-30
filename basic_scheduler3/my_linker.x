@@ -174,10 +174,12 @@ SECTIONS
 	}  > text
 	.tasksection :
 	{
-		. = ALIGN(4);
-		__tasksection_start__ = .;
-		*(.tasksection*)
-		__tasksection_end__ = .;
+		*(.tasksection_start)
+		KEEP (*(.tasksection_start))
+		FILL(0xDEADBEEF);
+		. = 0x1C00 - 1;
+		BYTE(0xAA)
+		___ROM_AT = .;
 	} > TASK_MEMORY
 	.data          :
 	{
@@ -284,4 +286,4 @@ SECTIONS
 ASSERT( LENGTH(FLASH) >= (_etext + SIZEOF(.data)), "FLASH memory overflowed !")
   
 /* Check if MY_MEMORY usage exceeds MY_MEMORY size */
-ASSERT( LENGTH(TASK_MEMORY) >= (__tasksection_end__ - __tasksection_start__), "tasksection memory overflowed !")
+/* ASSERT( LENGTH(TASK_MEMORY) >= (__tasksection_end__ - __tasksection_start__), "tasksection memory overflowed !") */
