@@ -14,7 +14,7 @@
 
 // Placeholder for main function pulled from other build.
 // Define the memory location for this function based on the linker section text.tasks
-#define LOCATE_FUNC  __attribute__((__section__(".tasks")))
+#define LOCATE_FUNC  __attribute__((__section__(".tasksection")))
 void LOCATE_FUNC task2() {}
 
 // Normally the stack grows from the end of the RAM range. Here we're allocating memory on the heap

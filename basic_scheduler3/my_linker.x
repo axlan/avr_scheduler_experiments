@@ -23,6 +23,8 @@ MEMORY
 	lock      (rw!x) : ORIGIN = 0x830000, LENGTH = __LOCK_REGION_LENGTH__
 	signature (rw!x) : ORIGIN = 0x840000, LENGTH = __SIGNATURE_REGION_LENGTH__
 	user_signatures (rw!x) : ORIGIN = 0x850000, LENGTH = __USER_SIGNATURE_REGION_LENGTH__
+	/* Reserve second half of PROG_MEM for task stuff. */
+	TASK_MEMORY (rx) : ORIGIN = 0x2400, LENGTH = 7k
 }
 SECTIONS
 {
@@ -165,15 +167,18 @@ SECTIONS
 	*(.fini0)  /* Infinite loop after program termination.  */
 	KEEP (*(.fini0))
 	__scheduler_end__ = .;
-	/* Space to write loaded tasks to.  */
-	. = 0x2000;
-	*(.tasks)
-	KEEP (*(.tasks))
 	/* "dynamic syscall" functions in last 1K. Should add assert to check size of previous sections. */
-	. = 0x3C00;
+	. = 0x2000;
 	*(.delay_func)
 		_etext = . ;
 	}  > text
+	.tasksection :
+	{
+		. = ALIGN(4);
+		__tasksection_start__ = .;
+		*(.tasksection*)
+		__tasksection_end__ = .;
+	} > TASK_MEMORY
 	.data          :
 	{
 		PROVIDE (__data_start = .) ;
@@ -273,4 +278,10 @@ SECTIONS
 }
 
 /* Check if compiled scheduler code overflows into space reserved for external tasks. */
-/* ASSERT(__scheduler_end__ < 0x2000, "FLASH memory overflowed !")*/
+/* ASSERT(__scheduler_end__ < 0x2400, "FLASH memory overflowed for scheduler !")*/
+
+/* Check if FLASH usage exceeds FLASH size */
+ASSERT( LENGTH(FLASH) >= (_etext + SIZEOF(.data)), "FLASH memory overflowed !")
+  
+/* Check if MY_MEMORY usage exceeds MY_MEMORY size */
+ASSERT( LENGTH(TASK_MEMORY) >= (__tasksection_end__ - __tasksection_start__), "tasksection memory overflowed !")
