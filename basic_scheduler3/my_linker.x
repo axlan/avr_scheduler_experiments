@@ -166,7 +166,7 @@ SECTIONS
 	KEEP (*(.fini0))
 	/* Space to write loaded tasks to.  */
 	. = 0x2000
-	*(.tasks)  
+	*(.tasks)
 	KEEP (*(.tasks))
 	/* "dynamic syscall" functions in last 1K. Should add assert to check size of previous sections. */
 	. = 0x3C00
