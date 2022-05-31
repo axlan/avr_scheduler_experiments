@@ -14,8 +14,8 @@
 
 // Placeholder for main function pulled from other build.
 // Define the memory location for this function based on the linker section text.tasks
-#define LOCATE_FUNC  __attribute__((__section__(".tasksection_start")))
-void LOCATE_FUNC task2() {}
+#define LOCATE_TASK_FUNC  __attribute__((__section__(".tasksection_start")))
+void LOCATE_TASK_FUNC task2() {}
 
 
 // Normally the stack grows from the end of the RAM range. Here we're allocating memory on the heap
@@ -65,7 +65,8 @@ inline uint16_t get_time() {
 
 // Ticks are 64us based on timer1 settings
 // To keep things simple, I'm going to assume the delay times are much less than 2^15 as a way to detect overflows.
-void delay(uint16_t ticks) {
+#define LOCATE_DELAY_FUNC  __attribute__((__section__(".delay_func")))
+void LOCATE_DELAY_FUNC delay(uint16_t ticks) {
 	current_task->next_run = get_time() + ticks;
 	suspend_task();
 }
@@ -114,7 +115,7 @@ bool is_time_past(uint16_t target_time) {
 		return true;
 	}
 	else {
-		return diff < 0;
+		return diff <= 0;
 	}	
 }
 

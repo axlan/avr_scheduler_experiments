@@ -16,14 +16,16 @@
 #define MS_TO_TICKS(ms) (F_CPU / (1000.0d * 64.0d / ((double)ms)))
 
 typedef void (*delay_sig)(uint16_t);
-delay_sig delay = (delay_sig)0x3C00;
+#define DELAY_SYS_CALL ((delay_sig)0x1000)
+// #define DELAY_SYS_CALL asm("call 0x1000")
+
 
 int main(void)
 {
 	while (1) {
 		PORTB |= 2;
-		delay(MS_TO_TICKS(10));
+		DELAY_SYS_CALL(MS_TO_TICKS(10));
 		PORTB &= ~2;
-		delay(MS_TO_TICKS(20));
+		DELAY_SYS_CALL(MS_TO_TICKS(20));
 	}
 }
