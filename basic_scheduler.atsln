@@ -11,6 +11,8 @@ Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "task3", "task3\task3.cproj"
 EndProject
 Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "basic_scheduler3", "basic_scheduler3\basic_scheduler3.cproj", "{D66D4C36-18A4-4667-BEB3-23BC7A526ACD}"
 EndProject
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "basic_scheduler4", "basic_scheduler4\basic_scheduler4.cproj", "{AF7A40EE-6862-4A79-8445-7F92A84FCF02}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|AVR = Debug|AVR
@@ -33,6 +35,10 @@ Global
 		{D66D4C36-18A4-4667-BEB3-23BC7A526ACD}.Debug|AVR.Build.0 = Debug|AVR
 		{D66D4C36-18A4-4667-BEB3-23BC7A526ACD}.Release|AVR.ActiveCfg = Release|AVR
 		{D66D4C36-18A4-4667-BEB3-23BC7A526ACD}.Release|AVR.Build.0 = Release|AVR
+		{AF7A40EE-6862-4A79-8445-7F92A84FCF02}.Debug|AVR.ActiveCfg = Debug|AVR
+		{AF7A40EE-6862-4A79-8445-7F92A84FCF02}.Debug|AVR.Build.0 = Debug|AVR
+		{AF7A40EE-6862-4A79-8445-7F92A84FCF02}.Release|AVR.ActiveCfg = Release|AVR
+		{AF7A40EE-6862-4A79-8445-7F92A84FCF02}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

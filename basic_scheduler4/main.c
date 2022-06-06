@@ -5,18 +5,14 @@
  */
 
 #include <avr/io.h>
-#include <math.h>
+#include <avr/interrupt.h>
 #include <stdbool.h>
 
 #ifndef F_CPU
 	#define F_CPU 16000000
 #endif
 
-// Placeholder for main function pulled from other build.
-// Define the memory location for this function based on the linker section text.tasksection_start
-#define LOCATE_TASK_FUNC  __attribute__((__section__(".tasksection_start")))
-void LOCATE_TASK_FUNC task2() {}
-
+#include "serial.h"
 
 // Normally the stack grows from the end of the RAM range. Here we're allocating memory on the heap
 // to use as independent stacks for our tasks. The "kernel" task will have an additional stack at
@@ -28,7 +24,9 @@ uint8_t stack2[STACK_SIZE];
 
 // We're tracking time based on timer1 which runs at F_CPU / 64.
 // The casting to to avoid overflowing the integer sizes.
+// Much more efficient to do this without floating point eventually.
 #define MS_TO_TICKS(ms) (F_CPU / (1000.0d * 64.0d / ((double)ms)))
+//#define MS_TO_TICKS(ms) (250 * ms)
 
 // These functions are declared in helpers.s . They back up the registers and switch stacks
 // between the current task and the kernel.
@@ -41,6 +39,8 @@ struct Task {
 	uint8_t* stack_pointer;
 	// This is used to point to the function for the task to start at.
 	void (*fun_ptr)(void);
+	// The index for the serial reads.
+	uint8_t serial_rx_idx;
 	// This is used to schedule when the task will run next.
 	uint16_t next_run;
 };
@@ -65,27 +65,47 @@ inline uint16_t get_time() {
 
 // Ticks are 64us based on timer1 settings
 // To keep things simple, I'm going to assume the delay times are much less than 2^15 as a way to detect overflows.
-// We're now using the section attribute to force this function to be defined at flash offset 0x2000 (which is instruction address 0x1000).
-#define LOCATE_DELAY_FUNC  __attribute__((__section__(".delay_func")))
-void LOCATE_DELAY_FUNC delay(uint16_t ticks) {
+void delay(uint16_t ticks) {
 	current_task->next_run = get_time() + ticks;
 	suspend_task();
 }
 
 // Dummy tasks to run.
 void task1() {
+	// This is potentially an issue since this string is stored in a specific place in program memory then loaded to global RAM.
+	const uint8_t resp[] = "Task1\n";
 	while (1) {
 		// Note that both tasks are modifying PORTB. This would not be safe if preemption was a possibility.
 		PORTB |= 1;
 		delay(MS_TO_TICKS(20));
 		PORTB &= ~1;
 		delay(MS_TO_TICKS(10));
+		uint8_t read_byte;
+		if (USART_Read(current_task->serial_rx_idx, &read_byte, 1)) {
+			USART_Rx_Clear(current_task->serial_rx_idx);
+			USART_Send(resp, sizeof(resp));
+		}
+	}
+}
+
+void task2() {
+	uint8_t in_buf[16];
+	while (1) {
+		PORTB |= 2;
+		delay(MS_TO_TICKS(10));
+		PORTB &= ~2;
+		delay(MS_TO_TICKS(20));
+		uint8_t ret = USART_Read(current_task->serial_rx_idx, in_buf, sizeof(in_buf)-1);
+		if (ret) {
+			in_buf[ret] = '\n';
+			USART_Send(in_buf, ret+1);
+		}
 	}
 }
 
 // Specify the stack and functions for the tasks.
 #define NUM_TASKS 2
-volatile struct Task tasks[] = {{stack1 + STACK_SIZE - 1, task1, 0}, {stack2 + STACK_SIZE - 1, task2, 0}};
+volatile struct Task tasks[] = {{stack1 + STACK_SIZE - 1, task1, 0, 0}, {stack2 + STACK_SIZE - 1, task2, 1, 0}};
 
 // Initialize the return pointer in the tasks' stacks.
 void setup_start_funcs() {
@@ -96,6 +116,8 @@ void setup_start_funcs() {
 		tasks[i].stack_pointer--;
 		*(tasks[i].stack_pointer) = (uint16_t)tasks[i].fun_ptr >> 8;
 		tasks[i].stack_pointer--;
+		// Space for preserved registers.
+		tasks[i].stack_pointer -= 18;
 	}
 }
 
@@ -116,7 +138,7 @@ bool is_time_past(uint16_t target_time) {
 		return true;
 	}
 	else {
-		return diff <= 0;
+		return diff < 0;
 	}	
 }
 
@@ -130,6 +152,23 @@ int main(void)
 	// To do this, just set the clock source to the 1/64 prescaler.
 	TCCR1B = (1 << CS11) | (1 << CS10);
 	
+	// Initialize the UART at 115200 baud.
+	USART_Init(115200);
+	
+	// Enable interrupts to allow UART RX and TX IRQs.
+	sei();
+	
+	/*
+	// Some test code for the serial library.
+	const uint8_t data_o[] = {1,2,3,4,5,6};
+	const uint8_t data_i[] = {1,2,3,4,5,6};
+	while (true) {
+		USART_Send(data_o, 6);
+		while (!USART_Read(0, data_i, 6)) {}
+		USART_Rx_Clear(1);
+	}
+	*/
+
 	while (1)
 	{
 		current_task = tasks + task_idx;
