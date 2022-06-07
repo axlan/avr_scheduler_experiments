@@ -52,7 +52,9 @@ volatile struct Task* current_task;
 volatile uint8_t* kernel_sp;
 
 // Used to track which task is active.
-int task_idx = 0;
+uint8_t task_idx = 0;
+
+uint8_t shared_lock = 0xFF;
 
 // Read timer1 counter.
 // This timer overflows every ~4 seconds
@@ -70,36 +72,55 @@ void delay(uint16_t ticks) {
 	suspend_task();
 }
 
+// Check if a pointer shared between tasks has been set, and if so wait until it's cleared.
+// The value of the lock is 0xFF if cleared, or the task_idx of the task holding the lock.
+// This doesn't need a critical section since there's no preemption.
+void get_lock(uint8_t* lock) {
+	while(*lock != 0xFF && *lock != task_idx) {
+		// Update the next wake up time so it doesn't overflow.
+		current_task->next_run = get_time();
+		suspend_task();
+	}
+	*lock = task_idx;
+}
+
+void release_lock(uint8_t* lock) {
+	*lock = 0xFF;
+}
+
+
 // Dummy tasks to run.
 void task1() {
-	// This is potentially an issue since this string is stored in a specific place in program memory then loaded to global RAM.
-	const uint8_t resp[] = "Task1\n";
+	uint8_t in_buf[16];
 	while (1) {
-		// Note that both tasks are modifying PORTB. This would not be safe if preemption was a possibility.
-		PORTB |= 1;
-		delay(MS_TO_TICKS(20));
-		PORTB &= ~1;
-		delay(MS_TO_TICKS(10));
-		uint8_t read_byte;
-		if (USART_Read(current_task->serial_rx_idx, &read_byte, 1)) {
-			USART_Rx_Clear(current_task->serial_rx_idx);
-			USART_Send(resp, sizeof(resp));
+		// If we don't already have the lock, get it.
+		if (shared_lock != task_idx) {
+			USART_Send((const uint8_t*)"Task1 locking\n", 14);
+			get_lock(&shared_lock);
+			USART_Send((const uint8_t*)"Task1 locked\n", 13);
 		}
+		// If we received serial data echo it and release the lock.
+		uint8_t len = USART_Read(current_task->serial_rx_idx, in_buf, 16);
+		if (len) {
+			USART_Send((const uint8_t*)"Task1 got: ", 11);
+			USART_Send(in_buf, len);
+			USART_Send((const uint8_t*)"\n", 1);
+			release_lock(&shared_lock);
+		}
+		delay(MS_TO_TICKS(1));
 	}
 }
 
 void task2() {
-	uint8_t in_buf[16];
 	while (1) {
-		PORTB |= 2;
 		delay(MS_TO_TICKS(10));
-		PORTB &= ~2;
-		delay(MS_TO_TICKS(20));
-		uint8_t ret = USART_Read(current_task->serial_rx_idx, in_buf, sizeof(in_buf)-1);
-		if (ret) {
-			in_buf[ret] = '\n';
-			USART_Send(in_buf, ret+1);
-		}
+		// Try to get the lock. This task is slower, so it will only get the
+		// lock when Task1 releases it, then sleeps.
+		USART_Send((const uint8_t*)"Task2 locking\n", 14);
+		get_lock(&shared_lock);
+		USART_Send((const uint8_t*)"Task2 locked\n", 13);
+		USART_Rx_Clear(current_task->serial_rx_idx);
+		release_lock(&shared_lock);
 	}
 }
 
