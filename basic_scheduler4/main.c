@@ -54,8 +54,6 @@ volatile uint8_t* kernel_sp;
 // Used to track which task is active.
 uint8_t task_idx = 0;
 
-uint8_t shared_lock = 0xFF;
-
 // Read timer1 counter.
 // This timer overflows every ~4 seconds
 inline uint16_t get_time() {
@@ -73,10 +71,12 @@ void delay(uint16_t ticks) {
 }
 
 // Check if a pointer shared between tasks has been set, and if so wait until it's cleared.
-// The value of the lock is 0xFF if cleared, or the task_idx of the task holding the lock.
+// The value of the lock is LOCK_FREE if cleared, or the task_idx of the task holding the lock.
 // This doesn't need a critical section since there's no preemption.
+#define LOCK_FREE 0xFF
+uint8_t shared_lock = LOCK_FREE;
 void get_lock(uint8_t* lock) {
-	while(*lock != 0xFF && *lock != task_idx) {
+	while(*lock != LOCK_FREE && *lock != task_idx) {
 		// Update the next wake up time so it doesn't overflow.
 		current_task->next_run = get_time();
 		suspend_task();
@@ -85,11 +85,9 @@ void get_lock(uint8_t* lock) {
 }
 
 void release_lock(uint8_t* lock) {
-	*lock = 0xFF;
+	*lock = LOCK_FREE;
 }
 
-
-// Dummy tasks to run.
 void task1() {
 	uint8_t in_buf[16];
 	while (1) {
