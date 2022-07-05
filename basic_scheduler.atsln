@@ -13,6 +13,10 @@ Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "basic_scheduler3", "basic_s
 EndProject
 Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "basic_scheduler4", "basic_scheduler4\basic_scheduler4.cproj", "{AF7A40EE-6862-4A79-8445-7F92A84FCF02}"
 EndProject
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "task5", "task5\task5.cproj", "{15327C34-61D0-40A0-B3E9-6B042583FD9D}"
+EndProject
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "basic_scheduler5", "basic_scheduler5\basic_scheduler5.cproj", "{B6F5E0AE-5CC3-4D93-93B5-A0AFE292E064}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|AVR = Debug|AVR
@@ -39,6 +43,14 @@ Global
 		{AF7A40EE-6862-4A79-8445-7F92A84FCF02}.Debug|AVR.Build.0 = Debug|AVR
 		{AF7A40EE-6862-4A79-8445-7F92A84FCF02}.Release|AVR.ActiveCfg = Release|AVR
 		{AF7A40EE-6862-4A79-8445-7F92A84FCF02}.Release|AVR.Build.0 = Release|AVR
+		{15327C34-61D0-40A0-B3E9-6B042583FD9D}.Debug|AVR.ActiveCfg = Debug|AVR
+		{15327C34-61D0-40A0-B3E9-6B042583FD9D}.Debug|AVR.Build.0 = Debug|AVR
+		{15327C34-61D0-40A0-B3E9-6B042583FD9D}.Release|AVR.ActiveCfg = Release|AVR
+		{15327C34-61D0-40A0-B3E9-6B042583FD9D}.Release|AVR.Build.0 = Release|AVR
+		{B6F5E0AE-5CC3-4D93-93B5-A0AFE292E064}.Debug|AVR.ActiveCfg = Debug|AVR
+		{B6F5E0AE-5CC3-4D93-93B5-A0AFE292E064}.Debug|AVR.Build.0 = Debug|AVR
+		{B6F5E0AE-5CC3-4D93-93B5-A0AFE292E064}.Release|AVR.ActiveCfg = Release|AVR
+		{B6F5E0AE-5CC3-4D93-93B5-A0AFE292E064}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
