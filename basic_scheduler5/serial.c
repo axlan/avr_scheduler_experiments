@@ -5,6 +5,7 @@
  *  Author: feros
  */ 
 #include "serial.h"
+#include <avr/boot.h>
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -132,6 +133,18 @@ bool Check_New_Error(uint8_t task_idx) {
 
 void USART_Rx_Clear(uint8_t task_idx) {
 	serial_rx_tail[task_idx] = serial_rx_head;
+}
+
+uint8_t USART_Rx_Bytes_Buffered(uint8_t task_idx) {
+	// Avoid race condition where head is updated during call.
+	uint8_t local_head = serial_rx_head;
+	if (serial_rx_tail[task_idx] <= local_head) {
+		return local_head - serial_rx_tail[task_idx];
+	}
+	// If head rolled over and tail hasn't
+	else {
+		return local_head + RX_BUFFER_LEN - serial_rx_tail[task_idx];
+	}
 }
 
 // Data Tx register empty interrupt.

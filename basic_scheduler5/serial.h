@@ -30,6 +30,11 @@ uint8_t USART_Send(const void* data, uint8_t len);
 uint8_t USART_Read(uint8_t task_idx, void* data, uint8_t len);
 
 /**
+ * Get the number of bytes waiting in the Rx buffer for this task_idx.
+ */
+uint8_t USART_Rx_Bytes_Buffered(uint8_t task_idx);
+
+/**
  * Clear the read buffer for one of the tasks.
  */
 void USART_Rx_Clear(uint8_t task_idx);

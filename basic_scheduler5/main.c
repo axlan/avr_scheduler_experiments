@@ -7,6 +7,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
+#include <avr/boot.h>
 #include <stdbool.h>
 
 #include "syscalls.h"
@@ -38,6 +39,7 @@ uint8_t* kernel_sp;
 // Used to track which task is active.
 uint8_t task_idx = 0;
 
+// TODO: Need to persistently load/store the size/offset to EEPROM to persist the tasks between power cycles.
 static struct Task tasks[MAX_LD_TASKS] = {0};
 
 // Initialize the return pointer in the tasks' stacks.
@@ -78,7 +80,31 @@ void HandleListTasksCmd() {
 	}
 }
 
-void HandleWriteCmd() {
+
+
+#define READ_UART_BYTE(data) \
+  while (!(UCSR0A & (1<<RXC0))); \
+  data = UDR0;
+  
+#define WRITE_UART_BYTE(data) \
+  while (!(UCSR0A & (1<<UDRE0))); \
+  UDR0 = data;
+  
+enum SpmState {
+	SPM_STATE_WRITING,
+	SPM_STATE_ERASING,
+	SPM_READY
+};
+
+
+void BOOTLOADER_SECTION HandleWriteCmd() {
+	// Block until header is received.
+	while (USART_Rx_Bytes_Buffered(0) < 5);
+	
+	// Since the UART interrupts are in the RWW memory disable them. Ideally, I'd move them to the NRWW section,
+	// but I don't want to do the config to move the vector table.
+	cli();
+	
 	uint8_t idx = 0;
 	USART_Read(0, &idx, 1);
 	uint16_t task_offset = 0;
@@ -86,14 +112,138 @@ void HandleWriteCmd() {
 	uint16_t task_size = 0;
 	USART_Read(0, &task_size, 2);
 	
-	uint8_t buffer;
+	
+	// This should probably be done at the end of this process, but doing it here to reduce the amount of book keeping
+	tasks[idx].fun_ptr = (task_sig)task_offset;
+	tasks[idx].size = task_size;
+	
+	// I found the instructions in the datasheet a little unclear about when writing to the flash buffer is allowed.
+	// My understanding is that you can write at any time, but doing the flash write clears it.
+	
+	// At 115200 baud 128 bytes transfer in about 11ms. The flash erase and write supposed
+	// to be about 4ms each. Ideally I should be able to receive and write the bytes to
+	// the temporary buffer while these operations are going.
+	
+
+	
+	// I'm assuming the start offset falls on a page boundary and is a multiple of 2 bytes large.
 	while (task_size > 0) {
-		if (USART_Read(0, &buffer, 1) == 1) {
-			
-			task_offset++;
-			task_size--;
+
+/*
+		uint8_t word[2];
+		boot_spm_busy_wait();
+		boot_page_erase (task_offset);
+		boot_spm_busy_wait();
+		
+		// Send the offset to sync the writes from the host
+		WRITE_UART_BYTE(task_offset & 0xFF);
+		WRITE_UART_BYTE(task_offset >> 8);
+		
+		for (int i = 0; i<SPM_PAGESIZE && task_size > 0; i +=2 ) {
+			READ_UART_BYTE(word[0]);
+			READ_UART_BYTE(word[1]);
+			task_size-=2;
+			boot_page_fill (task_offset + i, *(uint16_t*)word);
 		}
+		
+		boot_page_write (task_offset);
+		task_offset += SPM_PAGESIZE;
+*/
+/*
+		// Send the offset to sync the writes from the host
+		WRITE_UART_BYTE(task_offset & 0xFF);
+		WRITE_UART_BYTE(task_offset >> 8);
+		// This loop is trying to do a few things in parallel:
+		// * Wait for the previous write to finish and erase the next page when ready.
+		//   The first time this is called no write is in progress so this should occur immediately.
+		// * Receive bytes from the UART to write.
+		// * Write the received bytes to the temporary buffer.
+		int i = 0;
+		uint8_t word[2];
+		enum SpmState state = SPM_STATE_WRITING;
+		while (true) {
+			// Check if the Flash is free to erase.
+			if (state == SPM_STATE_WRITING && !boot_spm_busy()) {
+				boot_page_erase (task_offset);
+				state = SPM_STATE_ERASING;
+			// The erase finished.
+			} else if (state == SPM_STATE_ERASING && !boot_spm_busy()) {
+				state = SPM_READY;
+			}
+			
+			if (i<SPM_PAGESIZE && task_size > 0) {
+				// Check if a new UART byte was received.
+				// If it's the second byte in the word, write it to the temp buffer.
+				if (UCSR0A & (1<<RXC0)) {
+					word[i % 2] = UDR0;
+					i++;
+					task_size--;
+					if (i % 2 == 0) {
+						boot_page_fill (task_offset + i - 2, *(uint16_t*)word);	
+					}
+				}
+			} else if (state == SPM_READY) {
+				break;
+			}
+		}
+		// With the full page in the temporary buffer, write it to flash.
+		boot_page_write (task_offset);
+		// This doesn't help.
+		// boot_spm_busy_wait(); 
+		task_offset += i;
+*/
+
+		// Send the offset to sync the writes from the host
+		WRITE_UART_BYTE(task_offset & 0xFF);
+		WRITE_UART_BYTE(task_offset >> 8);
+		// This loop is trying to do a few things in parallel:
+		// * Wait for the previous write to finish and erase the next page when ready.
+		//   The first time this is called no write is in progress so this should occur immediately.
+		// * Receive bytes from the UART to write.
+		// * Write the received bytes to the temporary buffer.
+		int i = 0;
+		enum SpmState state = SPM_STATE_WRITING;
+		while (true) {
+			// Check if the Flash is free to erase.
+			if (state == SPM_STATE_WRITING && !boot_spm_busy()) {
+				boot_page_erase (task_offset);
+				state = SPM_STATE_ERASING;
+			// The erase finished.
+			} else if (state == SPM_STATE_ERASING && !boot_spm_busy()) {
+				state = SPM_READY;
+			}
+			
+			if (i<SPM_PAGESIZE && task_size > 0) {
+				// Check if a new UART byte was received.
+				// If it's the second byte in the word, write it to the temp buffer.
+				if (UCSR0A & (1<<RXC0)) {
+					stacks[i] = UDR0;
+					i++;
+					task_size--;
+				}
+			} else if (state == SPM_READY) {
+				break;
+			}
+		}
+
+		for (i = 0; i<SPM_PAGESIZE; i +=2 ) {
+			boot_page_fill (task_offset + i, *(uint16_t*)(stacks + i));
+		}
+		
+		// With the full page in the temporary buffer, write it to flash.
+		boot_page_write (task_offset);
+		task_offset += SPM_PAGESIZE;
+
 	}
+	
+	boot_spm_busy_wait();       // Wait until the memory is written.
+
+	// Reenable RWW-section again. We need this if we want to jump back
+	// to the application after bootloading.
+
+	boot_rww_enable ();
+	
+	sei();
 }
 
 void HandleDeleteCmd() {

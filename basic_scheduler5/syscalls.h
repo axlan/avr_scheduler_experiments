@@ -13,12 +13,13 @@
 extern void start_task(void);
 extern void suspend_task(void);
 
+typedef void (*task_sig)(uint16_t);
 // This is what's needed to specify a task.
 struct Task {
 	// All the state is on the stack with it's end at this pointer.
 	uint8_t* stack_pointer;
 	// This is used to point to the function for the task to start at.
-	void (*fun_ptr)(void);
+	task_sig fun_ptr;
 	// This is used to schedule when the task will run next.
 	uint16_t next_run;
 	char name[16];
