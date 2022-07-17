@@ -26,7 +26,7 @@ task_struct_format = '<HHH16sH?'
 task_struct_size = struct.calcsize(task_struct_format)
 
 
-write_header_format = '<BBHH'
+write_header_format = '<BBHH16s'
 
 LIST_CMD = 1
 ENABLE_CMD = 2
@@ -39,7 +39,6 @@ with Serial(port.name, baudrate=115200, timeout=1) as ser:
     # List command
     ser.write(b'\01')
     data = ser.read(list_header_size)
-    print(data)
     (num_tasks, task_mem_offset, task_mem_size) = struct.unpack(list_header_format, data)
     print(f'num_tasks: {num_tasks}')
     print(f'task_mem_offset: 0x{task_mem_offset:X}')
@@ -52,7 +51,7 @@ with Serial(port.name, baudrate=115200, timeout=1) as ser:
     # Write Cmd
     DUMMY_DATA = b"FATCAT" * 100
     start_offset = (int(task_mem_offset / PAGE_SIZE) + 1) * PAGE_SIZE
-    data = struct.pack(write_header_format, WRITE_CMD, 0, start_offset, len(DUMMY_DATA))
+    data = struct.pack(write_header_format, WRITE_CMD, 0, start_offset, len(DUMMY_DATA), b"CatTask")
     ser.write(data)
     i = 0
     while i < len(DUMMY_DATA):

@@ -4,6 +4,7 @@
  * Comments assume F_CPU == 16e6 (default Arduino clock)
  */
 
+#include <avr/eeprom.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
@@ -30,6 +31,24 @@ uint8_t stacks[MAX_LD_TASKS * STACK_SIZE];
 const uint8_t TASK_PGRM_MEM[TASK_PRGM_MEM_SIZE] PROGMEM = {0};
 
 
+#define EEMPROM_PREAMBLE 0xABCD
+
+struct EepromTaskEntry {
+	uint16_t task_offset;
+	uint16_t task_size;
+	char task_name[16];
+};
+
+struct EepromTaskEntries {
+	uint16_t eeprom_preample;
+	struct EepromTaskEntry eeprom_tasks[MAX_LD_TASKS];
+};
+
+struct EepromTaskEntries eeprom_task_entries EEMEM;
+
+
+
+
 // Referenced in assembly code.
 struct Task* current_task;
 
@@ -43,17 +62,15 @@ uint8_t task_idx = 0;
 static struct Task tasks[MAX_LD_TASKS] = {0};
 
 // Initialize the return pointer in the tasks' stacks.
-void setup_start_funcs() {
-	//for (uint8_t i = 0; i < NUM_TASKS; i++) {
-		//// Add the function pointers to the stack. The stack grows down.
-		//// Most things are little endian, but this address is stored big endian: https://www.avrfreaks.net/forum/big-endian-or-little-endian-0
-		//*(tasks[i].stack_pointer) = (uint16_t)tasks[i].fun_ptr;
-		//tasks[i].stack_pointer--;
-		//*(tasks[i].stack_pointer) = (uint16_t)tasks[i].fun_ptr >> 8;
-		//tasks[i].stack_pointer--;
-		//// Space for preserved registers.
-		//tasks[i].stack_pointer -= 18;
-	//}
+void setup_start_func(uint8_t task_idx) {
+		// Add the function pointers to the stack. The stack grows down.
+		// Most things are little endian, but this address is stored big endian: https://www.avrfreaks.net/forum/big-endian-or-little-endian-0
+		*(tasks[task_idx].stack_pointer) = (uint16_t)tasks[task_idx].fun_ptr;
+		tasks[task_idx].stack_pointer--;
+		*(tasks[task_idx].stack_pointer) = (uint16_t)tasks[task_idx].fun_ptr >> 8;
+		tasks[task_idx].stack_pointer--;
+		// Space for preserved registers.
+		tasks[task_idx].stack_pointer -= 18;
 }
 
 
@@ -96,26 +113,56 @@ enum SpmState {
 	SPM_READY
 };
 
+void HandleDeleteCmd() {
+	uint8_t idx = 0;
+	USART_Read(0, &idx, 1);
+	if (idx < MAX_LD_TASKS) {
+		eeprom_write_word(&(eeprom_task_entries.eeprom_tasks[idx].task_size), 0);
+		tasks[idx].size = 0;
+		tasks[idx].enabled = 0;
+	}
+}
 
-void BOOTLOADER_SECTION HandleWriteCmd() {
+
+uint8_t HandleWriteHeader() {
 	// Block until header is received.
 	while (USART_Rx_Bytes_Buffered(0) < 5);
+	
+
+	uint8_t idx = 0;
+	USART_Read(0, &idx, 1);
+	tasks[idx].enabled = 0;
+	USART_Read(0, &(tasks[idx].fun_ptr), 2);
+	USART_Read(0, &(tasks[idx].size), 2);
+	
+	uint8_t i = 0;
+	while(i < 16) {
+		i += USART_Read(0, tasks[idx].name + i, 1);
+	}
+	
+	
+	struct EepromTaskEntry* eprom_ptr = eeprom_task_entries.eeprom_tasks + idx;
+	// Set this to 0 in case the write fails.
+	eeprom_write_word(&(eprom_ptr->task_size), 0);
+	eeprom_write_word(&(eprom_ptr->task_offset), (uint16_t)tasks[idx].fun_ptr);
+	eeprom_write_block(tasks[idx].name, eprom_ptr->task_name, 16);
+	eeprom_busy_wait();
+	return idx;
+}
+
+
+void BOOTLOADER_SECTION HandleWriteCmd() {
+	
+	// This doesn't need to be in boot section so seperate into own function.
+	uint8_t idx = HandleWriteHeader();
 	
 	// Since the UART interrupts are in the RWW memory disable them. Ideally, I'd move them to the NRWW section,
 	// but I don't want to do the config to move the vector table.
 	cli();
 	
-	uint8_t idx = 0;
-	USART_Read(0, &idx, 1);
-	uint16_t task_offset = 0;
-	USART_Read(0, (uint8_t*)&task_offset, 2);
-	uint16_t task_size = 0;
-	USART_Read(0, &task_size, 2);
-	
-	
-	// This should probably be done at the end of this process, but doing it here to reduce the amount of book keeping
-	tasks[idx].fun_ptr = (task_sig)task_offset;
-	tasks[idx].size = task_size;
+	uint16_t task_size = tasks[idx].size;
+	uint16_t task_offset = (uint16_t)tasks[idx].fun_ptr;
+
 	
 	// I found the instructions in the datasheet a little unclear about when writing to the flash buffer is allowed.
 	// My understanding is that you can write at any time, but doing the flash write clears it.
@@ -123,7 +170,6 @@ void BOOTLOADER_SECTION HandleWriteCmd() {
 	// At 115200 baud 128 bytes transfer in about 11ms. The flash erase and write supposed
 	// to be about 4ms each. Ideally I should be able to receive and write the bytes to
 	// the temporary buffer while these operations are going.
-	
 
 	
 	// I'm assuming the start offset falls on a page boundary and is a multiple of 2 bytes large.
@@ -149,50 +195,6 @@ void BOOTLOADER_SECTION HandleWriteCmd() {
 		boot_page_write (task_offset);
 		task_offset += SPM_PAGESIZE;
 */
-/*
-		// Send the offset to sync the writes from the host
-		WRITE_UART_BYTE(task_offset & 0xFF);
-		WRITE_UART_BYTE(task_offset >> 8);
-		// This loop is trying to do a few things in parallel:
-		// * Wait for the previous write to finish and erase the next page when ready.
-		//   The first time this is called no write is in progress so this should occur immediately.
-		// * Receive bytes from the UART to write.
-		// * Write the received bytes to the temporary buffer.
-		int i = 0;
-		uint8_t word[2];
-		enum SpmState state = SPM_STATE_WRITING;
-		while (true) {
-			// Check if the Flash is free to erase.
-			if (state == SPM_STATE_WRITING && !boot_spm_busy()) {
-				boot_page_erase (task_offset);
-				state = SPM_STATE_ERASING;
-			// The erase finished.
-			} else if (state == SPM_STATE_ERASING && !boot_spm_busy()) {
-				state = SPM_READY;
-			}
-			
-			if (i<SPM_PAGESIZE && task_size > 0) {
-				// Check if a new UART byte was received.
-				// If it's the second byte in the word, write it to the temp buffer.
-				if (UCSR0A & (1<<RXC0)) {
-					word[i % 2] = UDR0;
-					i++;
-					task_size--;
-					if (i % 2 == 0) {
-						boot_page_fill (task_offset + i - 2, *(uint16_t*)word);	
-					}
-				}
-			} else if (state == SPM_READY) {
-				break;
-			}
-		}
-		// With the full page in the temporary buffer, write it to flash.
-		boot_page_write (task_offset);
-		// This doesn't help.
-		// boot_spm_busy_wait(); 
-		task_offset += i;
-*/
-
 		// Send the offset to sync the writes from the host
 		WRITE_UART_BYTE(task_offset & 0xFF);
 		WRITE_UART_BYTE(task_offset >> 8);
@@ -244,15 +246,10 @@ void BOOTLOADER_SECTION HandleWriteCmd() {
 	boot_rww_enable ();
 	
 	sei();
+	
+	eeprom_write_word(&(eeprom_task_entries.eeprom_tasks[idx].task_size), tasks[idx].size);
 }
 
-void HandleDeleteCmd() {
-	uint8_t idx = 0;
-	USART_Read(0, &idx, 1);
-	if (idx < MAX_LD_TASKS) {
-		tasks[idx] = (const struct Task){ 0 };
-	}
-}
 
 void HandleEnableCmd() {
 	uint8_t idx = 0;
@@ -285,13 +282,29 @@ void check_scheduler_cmds() {
 	}
 }
 
-
+void init_from_eeprom() {
+	if (eeprom_read_word(&(eeprom_task_entries.eeprom_preample)) != EEMPROM_PREAMBLE) {
+		for (uint8_t i = 0; i < sizeof(eeprom_task_entries.eeprom_tasks); i++) {
+			eeprom_write_byte (((uint8_t*)&(eeprom_task_entries.eeprom_tasks)) + i, 0);
+		}
+		eeprom_write_word(&(eeprom_task_entries.eeprom_preample), EEMPROM_PREAMBLE);
+	}
+	for (uint8_t i = 0; i < MAX_LD_TASKS; i++) {
+		tasks[i].enabled = 0;
+		struct EepromTaskEntry* eprom_ptr = eeprom_task_entries.eeprom_tasks + i;
+		tasks[i].size = eeprom_read_word(&(eprom_ptr->task_size));
+		if (tasks[i].size > 0) {
+			eeprom_read_block(tasks[i].name, eprom_ptr->task_name, 16);
+			tasks[i].fun_ptr = (task_sig)eeprom_read_word(&(eprom_ptr->task_offset));
+		}
+	}
+}
 
 int main(void)
 {
+	init_from_eeprom();
 	// PORTB pin 0/1 output
 	DDRB = 0x3;
-	setup_start_funcs();
 	setup_scheduler_funcs();
 	
 	// Enable timer1 in normal mode with 4us rate.
