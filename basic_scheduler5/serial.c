@@ -133,6 +133,7 @@ bool Check_New_Error(uint8_t task_idx) {
 
 void USART_Rx_Clear(uint8_t task_idx) {
 	serial_rx_tail[task_idx] = serial_rx_head;
+	serial_rx_error[task_idx] = false;
 }
 
 uint8_t USART_Rx_Bytes_Buffered(uint8_t task_idx) {

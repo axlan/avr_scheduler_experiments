@@ -24,4 +24,6 @@ struct SchedulerFuncs {
 __attribute__((__section__(".scheduler_funcs")))
 struct SchedulerFuncs scheduler;
 
+#define TASK_ENTRY __attribute__((section(".vectors")))
+
 #endif /* SCHEDULER_H_ */

@@ -19,7 +19,7 @@ struct Task {
 	// All the state is on the stack with it's end at this pointer.
 	uint8_t* stack_pointer;
 	// This is used to point to the function for the task to start at.
-	task_sig fun_ptr;
+	uint16_t task_offset;
 	// This is used to schedule when the task will run next.
 	uint16_t next_run;
 	char name[16];

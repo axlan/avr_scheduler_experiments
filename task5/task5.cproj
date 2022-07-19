@@ -114,7 +114,17 @@
   <avrgcc.linker.general.DoNotUseStandardStartFiles>True</avrgcc.linker.general.DoNotUseStandardStartFiles>
   <avrgcc.linker.general.NoSharedLibraries>True</avrgcc.linker.general.NoSharedLibraries>
   <avrgcc.linker.optimization.GarbageCollectUnusedSections>False</avrgcc.linker.optimization.GarbageCollectUnusedSections>
-  <avrgcc.linker.miscellaneous.LinkerFlags>-Wl,--verbose,-T../my_linker.x,--defsym=TASK_OFFSET=0x00001160</avrgcc.linker.miscellaneous.LinkerFlags>
+  <avrgcc.linker.memorysettings.Flash>
+    <ListValues>
+      <Value>.task=0x80</Value>
+    </ListValues>
+  </avrgcc.linker.memorysettings.Flash>
+  <avrgcc.linker.memorysettings.Sram>
+    <ListValues>
+      <Value>.scheduler_funcs=0x01300</Value>
+    </ListValues>
+  </avrgcc.linker.memorysettings.Sram>
+  <avrgcc.linker.miscellaneous.LinkerFlags>-Wl,-section-start=.text=0x40</avrgcc.linker.miscellaneous.LinkerFlags>
   <avrgcc.assembler.general.IncludePaths>
     <ListValues>
       <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.6.364\include\</Value>
@@ -131,11 +141,6 @@
     <Compile Include="library.c">
       <SubType>compile</SubType>
     </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="my_linker.x">
-      <SubType>compile</SubType>
-    </None>
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
 </Project>

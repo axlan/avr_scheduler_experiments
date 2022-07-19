@@ -7,7 +7,25 @@
 
 ; Switch the stack from the main kernel stack to the custom stack pointed to by current_task
 start_task:
-	; TBD save R2–R17, R28, R29
+    ; Store the preserved registers for kernel
+	push R2
+	push R3
+	push R4
+	push R5
+	push R6
+	push R7
+	push R8
+	push R9
+	push R10
+	push R11
+	push R12
+	push R13
+	push R14
+	push R15
+	push R16
+	push R17
+	push R28
+	push R29
 	; Save the stack pointer register to kernel_sp
 	; Using the direct SRAM instructions since we're writing to a fixed address
 	lds r18,SPL
@@ -25,7 +43,7 @@ start_task:
 	sts SPL,r18
 	ld r18,X
 	sts SPH,r18
-	; Restore the preserved registers
+	; Restore the preserved registers for task
 	pop R29
 	pop R28
 	pop R17
@@ -50,7 +68,7 @@ start_task:
 
 ; This is basically the reverse of start_task to return to the kernel exectution
 suspend_task:
-    ; Store the preserved registers
+    ; Store the preserved registers for task
 	push R2
 	push R3
 	push R4
@@ -81,5 +99,24 @@ suspend_task:
 	sts SPL, r18
 	lds r18,kernel_sp+1
 	sts SPH, r18
+	; Restore the preserved registers for kernel
+	pop R29
+	pop R28
+	pop R17
+	pop R16
+	pop R15
+	pop R14
+	pop R13
+	pop R12
+	pop R11
+	pop R10
+	pop R9
+	pop R8
+	pop R7
+	pop R6
+	pop R5
+	pop R4
+	pop R3
+	pop R2
 	; return to the main task
 	ret

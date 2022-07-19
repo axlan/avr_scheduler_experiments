@@ -19,7 +19,7 @@ const char GOT_STR[] PROGMEM = "\nGot by Task1\n";
 	scheduler.usart_write(buf, sizeof(str) - 1)
 	
 
-__attribute__((section(".task")))
+TASK_ENTRY
 void task()  {
 	char in_buf[16];
 	while (1) {
@@ -30,9 +30,9 @@ void task()  {
 			SEND_P_STR(in_buf, LOCKED_STR);
 		}
 		// If we received serial data echo it and release the lock.
-		uint8_t len = scheduler.usart_write(in_buf, 16);
+		uint8_t len = scheduler.usart_read(in_buf, 16);
 		if (len) {
-			scheduler.usart_read(in_buf, len);
+			scheduler.usart_write(in_buf, len);
 			SEND_P_STR(in_buf, GOT_STR);
 			scheduler.release_lock();
 		}
