@@ -113,6 +113,7 @@ enum SpmState {
 };
 
 void HandleDeleteCmd() {
+	while (USART_Rx_Bytes_Buffered(0) < 1);
 	uint8_t idx = 0;
 	USART_Read(0, &idx, 1);
 	if (idx < MAX_LD_TASKS) {
@@ -251,6 +252,7 @@ void BOOTLOADER_SECTION HandleWriteCmd() {
 
 
 void HandleEnableCmd() {
+	while(USART_Rx_Bytes_Buffered(0) < 2);
 	uint8_t idx = 0;
 	USART_Read(0, &idx, 1);
 	uint8_t is_enabled = 0;
