@@ -18,7 +18,9 @@ struct SchedulerFuncs {
 	bool (*is_lock_available)(void);
 	void (*release_lock)(void);
 	uint8_t (*usart_write)(const void*, uint8_t );
+	uint8_t (*usart_write_free)();
 	uint8_t (*usart_read)(void*, uint8_t);
+	const char* (*get_task_name)(uint8_t*);
 };
 
 __attribute__((__section__(".scheduler_funcs")))

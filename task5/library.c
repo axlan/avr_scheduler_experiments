@@ -10,32 +10,47 @@
 
 #include "scheduler_funcs.h"
 
-const char LOCKING_STR[] PROGMEM = "Task1 locking\n";
-const char LOCKED_STR[] PROGMEM = "Task1 locked\n";
-const char GOT_STR[] PROGMEM = "\nGot by Task1\n";
+const char LOCKING_STR[] PROGMEM = "locking\n";
+const char LOCKED_STR[] PROGMEM = "locked\n";
+const char GOT_STR[] PROGMEM = "Got ";
 
-#define SEND_P_STR(buf, str) \
-	strcpy_P(buf, str); \
-	scheduler.usart_write(buf, sizeof(str) - 1)
-	
+#define SEND_P_STR_AND_NAME(str) \
+    scheduler.usart_write(name, name_len); \
+	memcpy_P(buffer+2, str, sizeof(str) - 1); \
+	scheduler.usart_write(buffer, sizeof(str) + 1)
 
 TASK_ENTRY
 void task()  {
-	char in_buf[16];
+	// Setup for outputting name string.
+	char buffer[16];
+	buffer[0] = ':';
+	buffer[1] = ' ';
+	uint8_t name_len = 0;
+	const char* name = scheduler.get_task_name(&name_len);
+	
+	bool has_lock = false;
+
 	while (1) {
-		// If we don't already have the lock, get it.
-		if (!scheduler.is_lock_available()) {
-			SEND_P_STR(in_buf, LOCKING_STR);
-			scheduler.get_lock();
-			SEND_P_STR(in_buf, LOCKED_STR);
+		// Only try to process data if TX buffer has free space.	
+		if (scheduler.usart_write_free() > 32) {
+			if (!has_lock) {
+				SEND_P_STR_AND_NAME(LOCKING_STR);
+				scheduler.get_lock();
+				SEND_P_STR_AND_NAME(LOCKED_STR);
+				has_lock = true;
+			}
+
+			// If we received serial data echo it and release the lock.
+			uint8_t len = scheduler.usart_read(buffer+6, 9);
+			if (len && buffer[6] > 31) {
+				memcpy_P(buffer+2, GOT_STR, 4); 
+				buffer[6 + len] = '\n';
+				scheduler.usart_write(name, name_len);
+				scheduler.usart_write(buffer, 6 + len + 1);
+				scheduler.release_lock();
+				has_lock = false;
+			}
 		}
-		// If we received serial data echo it and release the lock.
-		uint8_t len = scheduler.usart_read(in_buf, 16);
-		if (len) {
-			scheduler.usart_write(in_buf, len);
-			SEND_P_STR(in_buf, GOT_STR);
-			scheduler.release_lock();
-		}
-		scheduler.delay_ms(1);
+		scheduler.delay_ms(100);
 	}
 }

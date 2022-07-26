@@ -20,8 +20,8 @@
 // We're tracking time based on timer1 which runs at F_CPU / 64.
 // The casting to to avoid overflowing the integer sizes.
 // Much more efficient to do this without floating point eventually.
-#define MS_TO_TICKS(ms) (F_CPU / (1000.0d * 64.0d / ((double)ms)))
-//#define MS_TO_TICKS(ms) (250 * ms)
+//#define MS_TO_TICKS(ms) (F_CPU / (1000.0d * 64.0d / ((double)ms)))
+#define MS_TO_TICKS(ms) (250 * ms)
 
 
 // Referenced in assembly code.
@@ -76,6 +76,24 @@ uint8_t usart_read(void* data, uint8_t len) {
 	return USART_Read(task_idx + 1, data, len);
 }
 
+const char* get_task_name(uint8_t* size) {
+	if (size != 0) {
+		*size = 0;
+		for (; *size < sizeof(current_task->name); (*size)++) {
+			if (current_task->name[*size] == 0) {
+				break;
+			}
+		}
+	}
+	return (const char*)current_task->name;
+}
+
+void cleanup_task(uint8_t idx) {
+	if (shared_lock == idx) {
+		release_lock();
+	}
+}
+
 // Initialize the shared function pointers.
 void setup_scheduler_funcs() {
 	scheduler.delay_ms = delay_ms;
@@ -84,6 +102,8 @@ void setup_scheduler_funcs() {
 	scheduler.release_lock =release_lock;
 	scheduler.usart_read = usart_read;
 	scheduler.usart_write = USART_Send;
+	scheduler.usart_write_free = USART_Tx_Free_Buffer;
+	scheduler.get_task_name = get_task_name;
 }
 
 // This assumes that the tasks are running for less than 125 ms, and delaying for less than 125 ms.

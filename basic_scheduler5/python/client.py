@@ -7,6 +7,7 @@ import math
 import struct
 import subprocess
 import threading
+from attr import fields
 
 from colorama import init, Fore, Back, Style
 from serial import Serial
@@ -58,6 +59,26 @@ def compile_task(object_file, start_offset):
                            'C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.6.364\gcc\dev\atmega168'])
     if ret:
         exit(1)
+
+
+    proc = subprocess.run([tool_path + 'avr-objdump', "-h", "-S", elf_out], stdout=subprocess.PIPE)
+    output = proc.stdout.decode('utf-8').replace('\r', '')
+
+    # Generate dump of loaded task
+    with open(f'{elf_out}.{start_offset}.lss', "w") as outfile:
+        outfile.write(output)
+
+    # Check for .data usage
+    for line in output.splitlines():
+        if "Disassembly" in line:
+            break
+        fields = line.split()
+        if len(fields) == 7:
+            if fields[1] == ".scheduler_funcs":
+                continue
+            if fields[3].startswith('0080') and int(fields[2],16) != 0:
+                print("Tasks can't use the RAM directly. All data must be on the stack.")
+                exit(1) 
 
     ret = subprocess.call([tool_path + 'avr-objcopy', "-O",
                           "binary", "--only-section=.text", elf_out, task_dump])
@@ -229,7 +250,8 @@ def term_input_func(ser):
     try:
         while True:
             c = ser.read().decode('ascii')
-            print(c, end='')
+            print(Fore.CYAN + c, end='')
+            reset_style()
     except:
       pass
 
@@ -265,7 +287,7 @@ EXAMPLE USAGE
         help='Enabled/disable a task by name or index.')
     enable_parser.add_argument('task', help='The name or id of the task.')
     enable_parser.add_argument(
-        'is_enabled', default='true', help='Whether to enabled (true/1) or disable the task.')
+        'is_enabled', nargs='?', default='true', help='Whether to enabled (true/1) or disable the task.')
 
     load_parser = command_subparsers.add_parser(
         'load',
@@ -288,6 +310,8 @@ EXAMPLE USAGE
         port_name = args.device_port
 
     with Serial(port_name, baudrate=115200, timeout=1) as ser:
+        # Flush the read buffer.
+        ser.read_all()
         if args.command is None:
             print('No command specified.\n')
             parser.print_help()
@@ -303,6 +327,8 @@ EXAMPLE USAGE
         if args.command == 'list':
             draw_tasks(task_state)
         elif args.command == 'enable':
+            if task_state['tasks'][idx]['size'] == 0:
+                print(f"Can't enable task {idx} since no task is loaded.")
             is_enabled = args.is_enabled == "1" or args.is_enabled.lower() == 'true'
             enable_task(ser, idx, is_enabled)
         elif args.command == 'load':
@@ -329,3 +355,8 @@ EXAMPLE USAGE
 
 if __name__ == '__main__':
     main()
+
+# python basic_scheduler5/python/client.py list
+# python basic_scheduler5/python/client.py load Task1 task5/Debug/library.o
+# python basic_scheduler5/python/client.py enable Task1
+

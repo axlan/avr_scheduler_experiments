@@ -52,3 +52,7 @@ void setup_scheduler_funcs();
 // This assumes that the tasks are running for less than 125 ms, and delaying for less than 125 ms.
 // This time scale could be increased either by slowing down timer1 (and losing precision) or by using a timer interrupt to make the effective timer size 32 bit.
 bool is_time_past(uint16_t target_time);
+
+const char* get_task_name(uint8_t* size);
+
+void cleanup_task(uint8_t idx);

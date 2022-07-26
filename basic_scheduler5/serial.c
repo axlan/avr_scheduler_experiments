@@ -144,7 +144,19 @@ uint8_t USART_Rx_Bytes_Buffered(uint8_t task_idx) {
 	}
 	// If head rolled over and tail hasn't
 	else {
-		return local_head + RX_BUFFER_LEN - serial_rx_tail[task_idx];
+		return local_head + (RX_BUFFER_LEN - serial_rx_tail[task_idx]);
+	}
+}
+
+uint8_t USART_Tx_Free_Buffer() {
+	// Avoid race condition where tail is updated during call.
+	uint8_t local_tail = serial_tx_tail;
+	if (local_tail <= serial_tx_head) {
+		return TX_BUFFER_LEN - (serial_tx_head - local_tail);
+	}
+	// If head rolled over and tail hasn't
+	else {
+		return serial_tx_head - local_tail;
 	}
 }
 

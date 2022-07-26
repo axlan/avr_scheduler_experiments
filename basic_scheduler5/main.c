@@ -121,6 +121,7 @@ void HandleDeleteCmd() {
 		tasks[idx].size = 0;
 		tasks[idx].enabled = 0;
 	}
+	cleanup_task(idx);
 }
 
 uint8_t HandleWriteHeader() {
@@ -142,6 +143,7 @@ uint8_t HandleWriteHeader() {
 	for (i = 0; i < MAX_LD_TASKS; i++) {
 		tasks[i].enabled = 0;
 	}
+	release_lock();
 	
 	struct EepromTaskEntry* eprom_ptr = eeprom_task_entries.eeprom_tasks + idx;
 	// Set this to 0 in case the write fails.
@@ -265,6 +267,8 @@ void HandleEnableCmd() {
 			USART_Rx_Clear(idx + 1);
 			setup_start_func(idx);
 			tasks[idx].next_run = get_time();
+		} else if (!is_enabled) {
+			cleanup_task(idx);
 		}
 		tasks[idx].enabled = is_enabled;
 	}
