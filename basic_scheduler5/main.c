@@ -276,21 +276,32 @@ void HandleEnableCmd() {
 
 void check_scheduler_cmds() {
 	uint8_t cmd_type = 0;
+	bool found = false;
 	// This makes the big assumption that the serial input synced and stays synced.
 	while (USART_Read(0, &cmd_type, 1)) {
 		switch (cmd_type) {
 			case CMD_LIST:
+				found = true;
 				HandleListTasksCmd();
 				break;
 			case CMD_ENABLE:
+				found = true;
 				HandleEnableCmd();
 				break;
 			case CMD_WRITE:
+				found = true;
 				HandleWriteCmd();
 				break;
 			case CMD_DELETE:
+				found = true;
 				HandleDeleteCmd();
 				break;
+		}
+
+		if (found) {
+			for(uint8_t i = 1; i < MAX_TASKS; i++) {
+				USART_Rx_Clear(i);
+			}
 		}
 	}
 }
