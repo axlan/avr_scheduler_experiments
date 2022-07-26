@@ -39,10 +39,12 @@ start_task:
 	lds r26,current_task
 	lds r27,current_task+1
 	; Use X register to copy the stack pointer, to the stack pointer register.
+	cli
 	ld r18,X+
 	sts SPL,r18
 	ld r18,X
 	sts SPH,r18
+	sei
 	; Restore the preserved registers for task
 	pop R29
 	pop R28
@@ -68,6 +70,7 @@ start_task:
 
 ; This is basically the reverse of start_task to return to the kernel exectution
 suspend_task:
+	
     ; Store the preserved registers for task
 	push R2
 	push R3
@@ -95,10 +98,12 @@ suspend_task:
 	lds r18,SPH
 	st X, r18
 	; Restore the main task SP
+	cli
 	lds r18,kernel_sp
 	sts SPL, r18
 	lds r18,kernel_sp+1
 	sts SPH, r18
+	sei
 	; Restore the preserved registers for kernel
 	pop R29
 	pop R28
