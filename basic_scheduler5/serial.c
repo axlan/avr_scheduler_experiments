@@ -156,7 +156,7 @@ uint8_t USART_Tx_Free_Buffer() {
 	}
 	// If head rolled over and tail hasn't
 	else {
-		return serial_tx_head - local_tail;
+		return local_tail - serial_tx_head;
 	}
 }
 
