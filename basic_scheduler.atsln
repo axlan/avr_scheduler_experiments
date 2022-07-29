@@ -19,6 +19,8 @@ Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "basic_scheduler5", "basic_s
 EndProject
 Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "boot_test", "boot_test\boot_test.cproj", "{2A6FE456-DC6E-43E4-99F6-C9D2635DC449}"
 EndProject
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "task5_2", "task5_2\task5_2.cproj", "{09F33A54-A59F-4447-ADB7-F71F5F5AE38C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|AVR = Debug|AVR
@@ -57,6 +59,10 @@ Global
 		{2A6FE456-DC6E-43E4-99F6-C9D2635DC449}.Debug|AVR.Build.0 = Debug|AVR
 		{2A6FE456-DC6E-43E4-99F6-C9D2635DC449}.Release|AVR.ActiveCfg = Release|AVR
 		{2A6FE456-DC6E-43E4-99F6-C9D2635DC449}.Release|AVR.Build.0 = Release|AVR
+		{09F33A54-A59F-4447-ADB7-F71F5F5AE38C}.Debug|AVR.ActiveCfg = Debug|AVR
+		{09F33A54-A59F-4447-ADB7-F71F5F5AE38C}.Debug|AVR.Build.0 = Debug|AVR
+		{09F33A54-A59F-4447-ADB7-F71F5F5AE38C}.Release|AVR.ActiveCfg = Release|AVR
+		{09F33A54-A59F-4447-ADB7-F71F5F5AE38C}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
