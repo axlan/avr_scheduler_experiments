@@ -34,10 +34,13 @@ void delay_ms(uint16_t ms);
 // This doesn't need a critical section since there's no preemption.
 void get_lock();
 
+// Release the lock (regardless of what task is holding it).
 void release_lock();
 
+// Returns false if `get_lock()` would block.
 bool is_lock_available();
 
+// Read the UART buffer for the currently active task.
 uint8_t usart_read(void* data, uint8_t len);
 
 // Initialize the shared function pointers.

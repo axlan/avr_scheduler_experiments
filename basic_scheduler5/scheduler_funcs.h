@@ -1,11 +1,3 @@
-/*
- * scheduler.h
- *
- * Created: 6/12/2022 3:23:33 PM
- *  Author: feros
- */ 
-
-
 #ifndef SCHEDULER_H_
 #define SCHEDULER_H_
 
@@ -24,9 +16,12 @@ struct SchedulerFuncs {
 	const char* (*get_task_name)(uint8_t*);
 };
 
+// .scheduler_funcs needs to be set to the same value in the scheduler build, and the linking of each task.
 __attribute__((__section__(".scheduler_funcs")))
 struct SchedulerFuncs scheduler;
 
+// For simplicity tasks need to have their entry point at the start of the .text section.
+// This is normally where the vector table is, so using this attribute on the entry point function to put it there instead.
 #define TASK_ENTRY __attribute__((section(".vectors")))
 
 #endif /* SCHEDULER_H_ */
