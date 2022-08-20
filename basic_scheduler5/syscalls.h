@@ -1,11 +1,5 @@
 #pragma once
 
-/*
- * Here I add some basic logic to include a timer for the scheduler to let tasks sleep for
- * specified amount of time.
- * Comments assume F_CPU == 16e6 (default Arduino clock)
- */
-
 #include <stdbool.h>
 
 // These functions are declared in helpers.s . They back up the registers and switch stacks
@@ -53,6 +47,8 @@ void setup_scheduler_funcs();
 // This time scale could be increased either by slowing down timer1 (and losing precision) or by using a timer interrupt to make the effective timer size 32 bit.
 bool is_time_past(uint16_t target_time);
 
+// Return the pointer to the current task's name string.
 const char* get_task_name(uint8_t* size);
 
+// Have a task release any resources (like locks) it might be holding.
 void cleanup_task(uint8_t idx);
