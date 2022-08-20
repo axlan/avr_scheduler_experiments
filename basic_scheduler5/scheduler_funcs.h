@@ -11,7 +11,8 @@
 
 #include <stdbool.h>
 
-// This is what's needed to specify a task.
+// This is the set of "SystemCalls" tasks will have access to.
+// The functions are defined in the main scheduler build.
 struct SchedulerFuncs {
 	void (*delay_ms)(uint16_t);
 	void (*get_lock)(void);
